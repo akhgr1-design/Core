@@ -259,6 +259,8 @@ there is debug port to display debug instructions.
 equipment_config.h/.c - Base configuration system
 flash_config.h/.c - Storage foundation
 
+Done Filles in folder updated
+
 📅 PHASE 2: Core Control (2 files)
 
 ch_control_core.h/.c - Main system coordinator
