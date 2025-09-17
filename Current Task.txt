@@ -268,12 +268,14 @@ Done Filles in folder updated
 📅 PHASE 3: Safety Critical (2 files)
 
 ch_safety.h/.c - Safety systems
-Done Filles in folder updated
+Done Filles in folder updated   but it wont show debug data on port
 
 
 📅 PHASE 4: Control Systems (4 files)
 
 ch_temp_control.h/.c - Temperature control
+Done Filles in folder updated   but it wont show debug data on port
+
 ch_staging.h/.c - Equipment staging
 
 📅 PHASE 5: Intelligence (4 files)
@@ -289,7 +291,7 @@ Modify main.c and hmi.h for full integration
 
 
 * ========================================================================
- * Current File we are working on  is      ch_temp_control.h/.c - Temperature control
+ * Current File we are working on  is      ch_staging.h/.c - Equipment staging
  * ========================================================================
  *  Note that my Main also updated
  * ========================================================================
