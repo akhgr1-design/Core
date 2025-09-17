@@ -1,3 +1,4 @@
+
 /**
  * ========================================================================
  * COMPLETE CHILLER CONTROL SYSTEM - 4 FILE ARCHITECTURE
@@ -243,3 +244,18 @@
  * Each .c file will be approximately 500-800 lines of well-structured code
  * with full integration to your existing systems.
  */
+
+PS:  we have to go gradually with each file.  coz i have to test its functions. 
+so plan is u will create one fille and give me instructions what to test in it in hardware. 
+there is debug port to display debug instructions.
+
+
+
+
+
+
+* ========================================================================
+ * Current File we are working on  equipment_config.h/.c
+ * ========================================================================
+
+
