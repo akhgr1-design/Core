@@ -24,6 +24,7 @@
 #include "hmi.h"
 #include "sd_card.h"
 #include "equipment_config.h"
+#include "flash_config.h"
 
 /* Private define ------------------------------------------------------------*/
 #define RUN_LED_PORT        RUN_LED_GPIO_Port
@@ -265,6 +266,11 @@ if (EquipmentConfig_Init() == EQUIPMENT_STATUS_OK) {
     }
 /* --- Task 6: Equipment Configuration Processing --- */
 EquipmentConfig_ProcessPeriodicTasks();
+
+   /* --- Task 6: Flash Configuration Processing --- */
+FlashConfig_ProcessPeriodicTasks();
+
+   
     /* --- Task 3: GPIO Manager Processing --- */
     if (gpio_manager_initialized) {
         // Monitor input changes continuously
@@ -508,7 +514,14 @@ void Display_SystemStatus(void)
 
     snprintf(msg, sizeof(msg), "GPIO Manager: %s\r\n", gpio_manager_initialized ? "ACTIVE" : "INACTIVE");
     Send_Debug_Data(msg);
-
+ 
+/* === FLASH CONFIG INITIALIZATION === */
+Send_Debug_Data("=== Initializing Flash Configuration ===\r\n");
+if (FlashConfig_Init() == FLASH_CONFIG_OK) {
+    Send_Debug_Data("Flash Config: READY\r\n");
+} else {
+    Send_Debug_Data("Flash Config: FAILED\r\n");
+}
     // Show active relays
     Send_Debug_Data("Active Relays: ");
     uint8_t active_relays = 0;
@@ -520,6 +533,7 @@ void Display_SystemStatus(void)
             active_relays++;
         }
     }
+ 
     if (active_relays == 0) Send_Debug_Data("None");
     Send_Debug_Data("\r\n");
 
@@ -642,4 +656,5 @@ void assert_failed(uint8_t *file, uint32_t line)
   Send_Debug_Data(msg);
 }
 #endif /* USE_FULL_ASSERT */
+
 
