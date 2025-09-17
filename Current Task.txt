@@ -291,5 +291,7 @@ Modify main.c and hmi.h for full integration
 * ========================================================================
  * Current File we are working on  is      ch_safety.h/.c - Safety systems
  * ========================================================================
+ *  Note that my Main also updated
+ * ========================================================================
 
 
