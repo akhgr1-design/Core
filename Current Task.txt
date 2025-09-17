@@ -265,6 +265,8 @@ Done Filles in folder updated
 
 ch_control_core.h/.c - Main system coordinator
 
+Done Filles in folder updated
+
 📅 PHASE 3: Safety Critical (2 files)
 
 ch_safety.h/.c - Safety systems
@@ -287,7 +289,7 @@ Modify main.c and hmi.h for full integration
 
 
 * ========================================================================
- * Current File we are working on  is      equipment_config.h/.c
+ * Current File we are working on  is      ch_safety.h/.c - Safety systems
  * ========================================================================
 
 
