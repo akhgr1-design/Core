@@ -25,6 +25,7 @@
 #include "sd_card.h"
 #include "equipment_config.h"
 #include "flash_config.h"
+#include "ch_control_core.h"
 
 /* Private define ------------------------------------------------------------*/
 #define RUN_LED_PORT        RUN_LED_GPIO_Port
@@ -270,6 +271,12 @@ EquipmentConfig_ProcessPeriodicTasks();
    /* --- Task 6: Flash Configuration Processing --- */
 FlashConfig_ProcessPeriodicTasks();
 
+   /* --- Task 7: Chiller Core Control Processing --- */
+ChillerCore_Process();
+   // Chiller Core Commands
+else if (strncmp(command, "core_", 5) == 0) {
+    ChillerCore_ProcessDebugCommand(command);
+}
    
     /* --- Task 3: GPIO Manager Processing --- */
     if (gpio_manager_initialized) {
@@ -537,6 +544,15 @@ if (FlashConfig_Init() == FLASH_CONFIG_OK) {
     if (active_relays == 0) Send_Debug_Data("None");
     Send_Debug_Data("\r\n");
 
+/* === CHILLER CORE INITIALIZATION === */
+Send_Debug_Data("=== Initializing Chiller Control Core ===\r\n");
+ChillerFaultCode_t core_result = ChillerCore_Init();
+if (core_result == CH_FAULT_NONE) {
+    Send_Debug_Data("Chiller Core: READY\r\n");
+} else {
+    Send_Debug_Data("Chiller Core: INITIALIZATION FAILED\r\n");
+}
+ 
     // Show active inputs
     Send_Debug_Data("Active Inputs: ");
     uint8_t active_inputs = 0;
@@ -656,5 +672,6 @@ void assert_failed(uint8_t *file, uint32_t line)
   Send_Debug_Data(msg);
 }
 #endif /* USE_FULL_ASSERT */
+
 
 
