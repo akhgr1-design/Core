@@ -579,3 +579,17 @@ void EquipmentConfig_SaveRuntimeDataOnly(void)
         // No debug message for runtime-only saves
     }
 }
+
+/**
+ * @brief Check if compressor is installed
+ * @param compressor_id: Compressor ID to check
+ * @return 1 if installed, 0 if not installed
+ */
+uint8_t EquipmentConfig_IsCompressorInstalled(uint8_t compressor_id)
+{
+    if (compressor_id >= MAX_COMPRESSORS) {
+        return 0;
+    }
+    
+    return g_equipment_config.compressors[compressor_id].installed;
+}
