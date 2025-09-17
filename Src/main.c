@@ -119,7 +119,7 @@ int main(void)
 
   // Show available GPIO commands
   Send_Debug_Data("Available GPIO Commands:\r\n");
-  Send_Debug_Data("- relay_test : Test all relays\r\n");
+  // Send_Debug_Data("- relay_test : Test all relays\r\n");
   Send_Debug_Data("- input_monitor : Monitor inputs\r\n");
   Send_Debug_Data("- gpio_help : Show all commands\r\n");
 
@@ -273,10 +273,6 @@ FlashConfig_ProcessPeriodicTasks();
 
    /* --- Task 7: Chiller Core Control Processing --- */
 ChillerCore_Process();
-   // Chiller Core Commands
-else if (strncmp(command, "core_", 5) == 0) {
-    ChillerCore_ProcessDebugCommand(command);
-}
    
     /* --- Task 3: GPIO Manager Processing --- */
     if (gpio_manager_initialized) {
@@ -284,24 +280,23 @@ else if (strncmp(command, "core_", 5) == 0) {
         Monitor_Input_Changes_Continuous();
         
         // Non-blocking output test - runs every 30 seconds (completely silent)
-        static uint32_t auto_output_test_time = 0;
-        static uint8_t test_started = 0;
+        // static uint32_t auto_output_test_time = 0;
+        // static uint8_t test_started = 0;
         
         // Start test every 30 seconds (silent)
-        if (!Test_Is_Running() && (HAL_GetTick() - auto_output_test_time > 30000)) {
-            auto_output_test_time = HAL_GetTick();
-            test_started = 1;
-            // Completely silent - no debug messages
-        }
+        // if (!Test_Is_Running() && (HAL_GetTick() - auto_output_test_time > 30000)) {
+        //     auto_output_test_time = HAL_GetTick();
+        //     test_started = 1;
+        //     // Completely silent - no debug messages
+        // }
         
         // Run the non-blocking test
-        if (test_started) {
-            Test_All_Outputs_NonBlocking();
-            if (!Test_Is_Running()) {
-                test_started = 0;
-                // Completely silent - no debug messages
-            }
-        }
+        // if (test_started) {
+        //     Test_All_Outputs_NonBlocking();
+        //     if (!Test_Is_Running()) {
+        //         test_started = 0;
+        //     }
+        // }
         
         // Periodic GPIO status display every 60 seconds (only if inputs active)
         static uint32_t gpio_status_time = 0;
@@ -347,15 +342,7 @@ else if (strncmp(command, "core_", 5) == 0) {
  */
 void Process_DebugCommands(char* command)
 {
-    if (strncmp(command, "relay_test", 10) == 0) {
-        Send_Debug_Data("Starting relay test sequence...\r\n");
-        Test_AllRelays_Sequential();
-    }
-    else if (strncmp(command, "output_test", 11) == 0) {
-        Send_Debug_Data("Starting sequential output test...\r\n");
-        Test_All_Outputs_Sequential();
-    }
-    else if (strncmp(command, "gpio_status", 11) == 0) {
+    if (strncmp(command, "gpio_status", 11) == 0) {
         Display_GPIO_Status();
     }
     else if (strncmp(command, "relay_status", 12) == 0) {
@@ -449,19 +436,6 @@ else if (strncmp(command, "modbus_60s", 10) == 0) {
     Modbus_System_SetInterval(60000);
     Send_Debug_Data("Modbus interval set to 60 seconds\r\n");
 }
-    else {
-        char response[100];
-        snprintf(response, sizeof(response), "Unknown command: %s\r\n", command);
-        Send_Debug_Data(response);
-        Send_Debug_Data("Available commands:\r\n");
-        Send_Debug_Data("- relay_test, output_test, gpio_status\r\n");
-        Send_Debug_Data("- hmi_version, hmi_status, system_status\r\n");
-        Send_Debug_Data("- sd_test, sd_capacity, sd_status\r\n");
-        Send_Debug_Data("- sd_advanced : Complete SD setup\r\n");
-        Send_Debug_Data("- sd_performance : Performance test\r\n");
-        Send_Debug_Data("- sd_multiblock : Multi-block test\r\n");
-    }
-}
 else if (strncmp(command, "config_show", 11) == 0) {
     EquipmentConfig_DisplayStatus();
 }
@@ -495,6 +469,20 @@ else if (strncmp(command, "config_save", 11) == 0) {
         Send_Debug_Data("Flash save failed\r\n");
     }
 }
+    else {
+        char response[100];
+        snprintf(response, sizeof(response), "Unknown command: %s\r\n", command);
+        Send_Debug_Data(response);
+        Send_Debug_Data("Available commands:\r\n");
+        // Send_Debug_Data("- relay_test, output_test, gpio_status\r\n");
+        Send_Debug_Data("- hmi_version, hmi_status, system_status\r\n");
+        Send_Debug_Data("- sd_test, sd_capacity, sd_status\r\n");
+        Send_Debug_Data("- sd_advanced : Complete SD setup\r\n");
+        Send_Debug_Data("- sd_performance : Performance test\r\n");
+        Send_Debug_Data("- sd_multiblock : Multi-block test\r\n");
+    }
+}
+
 /**
  * @brief Display comprehensive system status
  */
@@ -577,6 +565,37 @@ if (core_result == CH_FAULT_NONE) {
 }
 
 /* USER CODE END 4 */
+
+/**
+ * @brief Log fault to flash memory
+ * @param fault_code: Fault code to log
+ * @param description: Human-readable fault description
+ */
+void ChillerCore_LogFault(ChillerFaultCode_t fault_code, const char* description)
+{
+    if (fault_code == CH_FAULT_NONE) {
+        return; // Don't log "no fault"
+    }
+    
+    // Convert fault code to alarm code (add 0x2000 offset for fault codes)
+    uint16_t alarm_code = 0x2000 + (uint16_t)fault_code;
+    
+    // Determine severity based on fault type
+    uint8_t severity = 5; // Default to critical
+    if (fault_code >= CH_FAULT_SUPPLY_TEMP_HIGH && fault_code <= CH_FAULT_AMBIENT_TEMP_HIGH) {
+        severity = 4; // High severity for temperature faults
+    } else if (fault_code >= CH_FAULT_PRESSURE_LOW && fault_code <= CH_FAULT_FLOW_LOSS) {
+        severity = 3; // Medium severity for pressure/flow faults
+    }
+    
+    // Log the fault using the existing alarm logging system
+    FlashConfig_LogAlarm(alarm_code, severity, 1, 0.0f, description);
+    
+    // Also send debug message for immediate visibility
+    char debug_msg[100];
+    snprintf(debug_msg, sizeof(debug_msg), "FAULT LOGGED: 0x%04X - %s\r\n", alarm_code, description);
+    Send_Debug_Data(debug_msg);
+}
 
 /**
   * @brief System Clock Configuration
