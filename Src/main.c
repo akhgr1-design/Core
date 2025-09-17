@@ -26,6 +26,7 @@
 #include "equipment_config.h"
 #include "flash_config.h"
 #include "ch_control_core.h"
+#include "ch_safety.h"
 
 /* Private define ------------------------------------------------------------*/
 #define RUN_LED_PORT        RUN_LED_GPIO_Port
@@ -273,6 +274,9 @@ FlashConfig_ProcessPeriodicTasks();
 
    /* --- Task 7: Chiller Core Control Processing --- */
 ChillerCore_Process();
+
+   /* --- Task 8: Safety System Processing --- */
+Safety_Process();  // Add this line to your existing tasks
    
     /* --- Task 3: GPIO Manager Processing --- */
     if (gpio_manager_initialized) {
@@ -469,14 +473,77 @@ else if (strncmp(command, "config_save", 11) == 0) {
         Send_Debug_Data("Flash save failed\r\n");
     }
 }
+else if (strncmp(command, "safety_status", 13) == 0) {
+    Safety_Debug_Status();
+}
+else if (strncmp(command, "safety_alarms", 13) == 0) {
+    Safety_Debug_Alarms();
+}
+else if (strncmp(command, "safety_test", 11) == 0) {
+    Safety_Debug_Test();
+}
+else if (strncmp(command, "safety_force_test", 16) == 0) {
+    // Force test the safety system
+    Send_Debug_Data("=== FORCE TESTING SAFETY SYSTEM ===\r\n");
+    Send_Debug_Data("Testing Safety_Init()...\r\n");
+    if (Safety_Init()) {
+        Send_Debug_Data("Safety_Init(): SUCCESS\r\n");
+    } else {
+        Send_Debug_Data("Safety_Init(): FAILED\r\n");
+    }
+    
+    Send_Debug_Data("Testing Safety_Debug_Status()...\r\n");
+    Safety_Debug_Status();
+    
+    Send_Debug_Data("Testing Safety_Process()...\r\n");
+    Safety_Process();
+    Send_Debug_Data("Safety_Process(): COMPLETED\r\n");
+    
+    Send_Debug_Data("=== SAFETY SYSTEM TEST COMPLETE ===\r\n");
+}
+else if (strncmp(command, "safety_reset", 12) == 0) {
+    Safety_Debug_Reset();
+}
+else if (strncmp(command, "safety_minimal", 14) == 0) {
+    Send_Debug_Data("=== MINIMAL SAFETY TEST ===\r\n");
+    Send_Debug_Data("Testing basic safety system...\r\n");
+    
+    // Test if safety system is initialized
+    extern uint8_t g_chiller_core_initialized;
+    Send_Debug_Data("Chiller core initialized: ");
+    Send_Debug_Data(g_chiller_core_initialized ? "YES" : "NO");
+    Send_Debug_Data("\r\n");
+    
+    // Test direct function call
+    Send_Debug_Data("Calling Safety_Init() directly...\r\n");
+    bool result = Safety_Init();
+    Send_Debug_Data("Safety_Init() result: ");
+    Send_Debug_Data(result ? "SUCCESS" : "FAILED");
+    Send_Debug_Data("\r\n");
+    
+    Send_Debug_Data("=== MINIMAL TEST COMPLETE ===\r\n");
+}
+else if (strncmp(command, "safety_basic", 12) == 0) {
+    Send_Debug_Data("=== BASIC SAFETY TEST ===\r\n");
+    Send_Debug_Data("This is a basic test.\r\n");
+    Send_Debug_Data("If you see this, the command system is working.\r\n");
+    Send_Debug_Data("=== BASIC TEST COMPLETE ===\r\n");
+}
+else if (strncmp(command, "test_safety", 11) == 0) {
+    Send_Debug_Data("=== ULTRA SIMPLE SAFETY TEST ===\r\n");
+    Send_Debug_Data("Command received: test_safety\r\n");
+    Send_Debug_Data("If you see this, the command system is working.\r\n");
+    Send_Debug_Data("=== TEST COMPLETE ===\r\n");
+}
     else {
         char response[100];
         snprintf(response, sizeof(response), "Unknown command: %s\r\n", command);
         Send_Debug_Data(response);
         Send_Debug_Data("Available commands:\r\n");
-        // Send_Debug_Data("- relay_test, output_test, gpio_status\r\n");
+        Send_Debug_Data("- relay_test, output_test, gpio_status\r\n");
         Send_Debug_Data("- hmi_version, hmi_status, system_status\r\n");
         Send_Debug_Data("- sd_test, sd_capacity, sd_status\r\n");
+        Send_Debug_Data("- safety_status, safety_alarms, safety_test, safety_reset\r\n");
         Send_Debug_Data("- sd_advanced : Complete SD setup\r\n");
         Send_Debug_Data("- sd_performance : Performance test\r\n");
         Send_Debug_Data("- sd_multiblock : Multi-block test\r\n");
@@ -539,6 +606,14 @@ if (core_result == CH_FAULT_NONE) {
     Send_Debug_Data("Chiller Core: READY\r\n");
 } else {
     Send_Debug_Data("Chiller Core: INITIALIZATION FAILED\r\n");
+}
+
+/* === SAFETY SYSTEM INITIALIZATION === */
+Send_Debug_Data("=== Initializing Safety System ===\r\n");
+if (!Safety_Init()) {
+    Send_Debug_Data("ERROR: Safety system initialization failed!\r\n");
+} else {
+    Send_Debug_Data("Safety System: READY\r\n");
 }
  
     // Show active inputs
