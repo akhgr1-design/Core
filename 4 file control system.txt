@@ -89,7 +89,12 @@
  * TEMPERATURE CONTROL FLOW (ch_temp_control.c):
  * ┌─────────────────────────────────────────────────────────────────────┐
  * │ 1. TempControl_Process()                                            │
- * │    ├── Read temperature sensors (Modbus integration)               │
+ * │    ├── Read temperature sensors (Modbus integration) 
+                A0 is for Return water temperature
+                A1 is for Supply water temperature
+                A2 is Ambient
+                A3 is Condenser Temperature
+                                                                        │  
  * │    ├── Filter and validate sensor readings                         │
  * │    ├── Run PID control algorithm                                   │
  * │    ├── Apply ambient temperature compensation                       │
