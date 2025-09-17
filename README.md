@@ -517,4 +517,4 @@ Condenser Bank 3: Q1.2 → PC0  (Relay 10) - Controls multiple condensers
 Condenser Bank 4: Q1.3 → PC1  (Relay 11) - Controls multiple condensers
 
 
-very important:  any snippets you provide me. check the relevant file. see start and line where between this should be placed. mention in that snippets the line sentences and line number.
+very important:  any snippets you provide me. check the relevant file. see start and line where between this should be placed. mention in that snippets the line sentences and line number. or give me full files.
