@@ -113,10 +113,23 @@ static void Config_InitializeDefaults(void)
     g_equipment_config.total_condenser_banks = 2;
     
     // 38°C Hot Climate Temperature Configuration
-    g_equipment_config.supply_water_setpoint = DEFAULT_SUPPLY_SETPOINT;     // 7°C
-    g_equipment_config.return_water_setpoint = DEFAULT_RETURN_SETPOINT;     // 12°C  
-    g_equipment_config.ambient_temp_baseline = DEFAULT_AMBIENT_TEMP;        // 38°C
-    g_equipment_config.high_ambient_alarm_limit = DEFAULT_HIGH_AMBIENT_LIMIT; // 40°C
+    g_equipment_config.supply_water_setpoint = 7.0f;     // 7°C
+    g_equipment_config.return_water_setpoint = 12.0f;    // 12°C  
+    g_equipment_config.ambient_temp_baseline = 38.0f;    // 38°C
+    g_equipment_config.high_ambient_alarm_limit = 40.0f; // 40°C
+    
+    // Debug: Verify temperature values are set correctly
+    char debug_msg[100];
+    snprintf(debug_msg, sizeof(debug_msg), "DEBUG: Supply=%d.%d°C, Return=%d.%d°C, Ambient=%d.%d°C\r\n",
+             (int)g_equipment_config.supply_water_setpoint,
+             (int)((g_equipment_config.supply_water_setpoint - (int)g_equipment_config.supply_water_setpoint) * 10),
+             (int)g_equipment_config.return_water_setpoint,
+             (int)((g_equipment_config.return_water_setpoint - (int)g_equipment_config.return_water_setpoint) * 10),
+             (int)g_equipment_config.ambient_temp_baseline,
+             (int)((g_equipment_config.ambient_temp_baseline - (int)g_equipment_config.ambient_temp_baseline) * 10));
+    Send_Debug_Data(debug_msg);
+    
+    Send_Debug_Data("DEBUG: Temperature values should be: Supply=7.0°C, Return=12.0°C, Ambient=38.0°C\r\n");
     
     // Equipment Configuration - Initialize first 4 compressors and 2 condenser banks
     for (int i = 0; i < MAX_COMPRESSORS; i++) {
@@ -343,7 +356,7 @@ EquipmentStatus_t EquipmentConfig_SaveToFlash(void)
  */
 void EquipmentConfig_ProcessPeriodicTasks(void)
 {
-    // Check if configuration needs to be saved
+    // Check if configuration needs to be saved (only for actual config changes)
     if (config_dirty_flag && 
         (HAL_GetTick() - config_last_save_time) >= g_equipment_config.config_update_interval) {
         EquipmentConfig_SaveToFlash();
@@ -355,7 +368,7 @@ void EquipmentConfig_ProcessPeriodicTasks(void)
     if (runtime_counter >= 36000) { // 100ms * 36000 = 1 hour
         runtime_counter = 0;
         g_equipment_config.total_system_runtime++;
-        config_dirty_flag = 1;
+        // Runtime updates don't trigger configuration saves
     }
 }
 
@@ -391,16 +404,30 @@ void EquipmentConfig_DisplayStatus(void)
              g_equipment_config.mode_configs[mode].max_condenser_banks);
     Send_Debug_Data(msg);
     
+    // Debug: Verify values before display
+    char debug_msg[100];
+    snprintf(debug_msg, sizeof(debug_msg), "DEBUG: Before display - Supply=%d.%d°C, Return=%d.%d°C\r\n",
+             (int)g_equipment_config.supply_water_setpoint,
+             (int)((g_equipment_config.supply_water_setpoint - (int)g_equipment_config.supply_water_setpoint) * 10),
+             (int)g_equipment_config.return_water_setpoint,
+             (int)((g_equipment_config.return_water_setpoint - (int)g_equipment_config.return_water_setpoint) * 10));
+    Send_Debug_Data(debug_msg);
+    
     // Temperature Settings (38°C Hot Climate)
-    snprintf(msg, sizeof(msg), "Temp Setpoints: Supply=%.1f°C, Return=%.1f°C, Tolerance=±%.1f°C\r\n",
-             g_equipment_config.supply_water_setpoint,
-             g_equipment_config.return_water_setpoint,
-             g_equipment_config.mode_configs[mode].temp_tolerance);
+    snprintf(msg, sizeof(msg), "Temp Setpoints: Supply=%d.%d°C, Return=%d.%d°C, Tolerance=±%d.%d°C\r\n",
+             (int)g_equipment_config.supply_water_setpoint,
+             (int)((g_equipment_config.supply_water_setpoint - (int)g_equipment_config.supply_water_setpoint) * 10),
+             (int)g_equipment_config.return_water_setpoint,
+             (int)((g_equipment_config.return_water_setpoint - (int)g_equipment_config.return_water_setpoint) * 10),
+             (int)g_equipment_config.mode_configs[mode].temp_tolerance,
+             (int)((g_equipment_config.mode_configs[mode].temp_tolerance - (int)g_equipment_config.mode_configs[mode].temp_tolerance) * 10));
     Send_Debug_Data(msg);
     
-    snprintf(msg, sizeof(msg), "Ambient Baseline: %.1f°C, High Alarm: %.1f°C\r\n",
-             g_equipment_config.ambient_temp_baseline,
-             g_equipment_config.high_ambient_alarm_limit);
+    snprintf(msg, sizeof(msg), "Ambient Baseline: %d.%d°C, High Alarm: %d.%d°C\r\n",
+             (int)g_equipment_config.ambient_temp_baseline,
+             (int)((g_equipment_config.ambient_temp_baseline - (int)g_equipment_config.ambient_temp_baseline) * 10),
+             (int)g_equipment_config.high_ambient_alarm_limit,
+             (int)((g_equipment_config.high_ambient_alarm_limit - (int)g_equipment_config.high_ambient_alarm_limit) * 10));
     Send_Debug_Data(msg);
     
     // Sensor Configuration
@@ -534,4 +561,21 @@ EquipmentStatus_t EquipmentConfig_FactoryReset(void)
     }
     
     return status;
+}
+
+/**
+ * @brief Save Runtime Data Only (without configuration)
+ */
+void EquipmentConfig_SaveRuntimeDataOnly(void)
+{
+    // Update timestamp and CRC before saving
+    g_equipment_config.timestamp = HAL_GetTick();
+    g_equipment_config.crc32 = EquipmentConfig_CalculateCRC32();
+    
+    // Write configuration to flash (silent save)
+    if (Flash_WritePage(EQUIPMENT_CONFIG_FLASH_ADDR, (uint8_t*)&g_equipment_config, 
+                       sizeof(EquipmentConfig_t)) == 0) {
+        config_last_save_time = HAL_GetTick();
+        // No debug message for runtime-only saves
+    }
 }
