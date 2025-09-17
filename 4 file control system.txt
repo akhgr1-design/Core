@@ -1,0 +1,245 @@
+/**
+ * ========================================================================
+ * COMPLETE CHILLER CONTROL SYSTEM - 4 FILE ARCHITECTURE
+ * ========================================================================
+ * 
+ * SYSTEM OVERVIEW:
+ * This chiller control system is divided into 4 logical modules for 
+ * maintainability and clarity. Each file handles a specific aspect of
+ * the chiller control system.
+ * 
+ * ========================================================================
+ * FILE STRUCTURE:
+ * ========================================================================
+ * 
+ * 1. ch_control_core.h/.c     - CORE CONTROL SYSTEM
+ *    └── System states, initialization, main control loop
+ *    └── Integration with equipment_config.h
+ *    └── System monitoring and diagnostics
+ * 
+ * 2. ch_temp_control.h/.c     - TEMPERATURE CONTROL
+ *    └── PID control algorithms
+ *    └── Temperature sensors management
+ *    └── Setpoint management and ambient compensation
+ * 
+ * 3. ch_staging.h/.c          - EQUIPMENT STAGING
+ *    └── Compressor start/stop control
+ *    └── Condenser bank management
+ *    └── Four-tier capacity control
+ *    └── Runtime balancing and lead/lag rotation
+ * 
+ * 4. ch_safety.h/.c           - SAFETY & PROTECTION
+ *    └── Safety interlocks and fault detection
+ *    └── Emergency stop handling
+ *    └── Equipment protection systems
+ *    └── Alarm management
+ * 
+ * ========================================================================
+ * INTEGRATION WITH YOUR EXISTING SYSTEM:
+ * ========================================================================
+ * 
+ * HARDWARE MAPPING (matches your existing GPIO):
+ * ┌─────────────────────┬─────────────────────┬─────────────────────┐
+ * │ EQUIPMENT           │ GPIO RELAY          │ CONTROL FILE        │
+ * ├─────────────────────┼─────────────────────┼─────────────────────┤
+ * │ Compressor 1        │ Q0.0 → PE5 (Relay0) │ ch_staging.c        │
+ * │ Compressor 2        │ Q0.1 → PB8 (Relay1) │ ch_staging.c        │
+ * │ Compressor 3        │ Q0.2 → PE2 (Relay2) │ ch_staging.c        │
+ * │ Compressor 4        │ Q0.3 → PB9 (Relay3) │ ch_staging.c        │
+ * │ Compressor 5        │ Q0.4 → PE3 (Relay4) │ ch_staging.c        │
+ * │ Compressor 6        │ Q0.5 → PE4 (Relay5) │ ch_staging.c        │
+ * │ Compressor 7        │ Q0.6 → PE6 (Relay6) │ ch_staging.c        │
+ * │ Compressor 8        │ Q0.7 → PA10(Relay7) │ ch_staging.c        │
+ * ├─────────────────────┼─────────────────────┼─────────────────────┤
+ * │ Condenser Bank 1    │ Q1.0 → PH0 (Relay8) │ ch_staging.c        │
+ * │ Condenser Bank 2    │ Q1.1 → PH1 (Relay9) │ ch_staging.c        │
+ * │ Condenser Bank 3    │ Q1.2 → PC0(Relay10) │ ch_staging.c        │
+ * │ Condenser Bank 4    │ Q1.3 → PC1(Relay11) │ ch_staging.c        │
+ * └─────────────────────┴─────────────────────┴─────────────────────┘
+ * 
+ * SAFETY INPUTS (matches your existing GPIO):
+ * ┌─────────────────────┬─────────────────────┬─────────────────────┐
+ * │ SAFETY INPUT        │ GPIO INPUT          │ CONTROL FILE        │
+ * ├─────────────────────┼─────────────────────┼─────────────────────┤
+ * │ Emergency Stop      │ I0.0 → PA0 (Input0) │ ch_safety.c         │
+ * │ Chiller Enable      │ I0.1 → PA1 (Input1) │ ch_safety.c         │
+ * │ CHW Flow Status     │ I0.2 → PC6 (Input2) │ ch_safety.c         │
+ * │ Phase Monitor       │ I0.3 → PC7 (Input3) │ ch_safety.c         │
+ * │ Water Level Low     │ I0.4 → PC4 (Input4) │ ch_safety.c         │
+ * │ Water Level High    │ I0.5 → PC5 (Input5) │ ch_safety.c         │
+ * │ Door Open           │ I0.6 → PA8 (Input6) │ ch_safety.c         │
+ * │ BMS Enable          │ I0.7 → PA9 (Input7) │ ch_safety.c         │
+ * └─────────────────────┴─────────────────────┴─────────────────────┘
+ * 
+ * ========================================================================
+ * CONTROL SYSTEM FLOW:
+ * ========================================================================
+ * 
+ * MAIN CONTROL LOOP (ch_control_core.c):
+ * ┌─────────────────────────────────────────────────────────────────────┐
+ * │ 1. ChillerControl_Core_Process()                                    │
+ * │    ├── Check system state and safety                               │
+ * │    ├── Read sensors (ch_temp_control.c)                           │
+ * │    ├── Calculate required capacity (ch_temp_control.c)             │
+ * │    ├── Execute staging decisions (ch_staging.c)                    │
+ * │    ├── Monitor safety conditions (ch_safety.c)                     │
+ * │    └── Update HMI and status                                       │
+ * └─────────────────────────────────────────────────────────────────────┘
+ * 
+ * TEMPERATURE CONTROL FLOW (ch_temp_control.c):
+ * ┌─────────────────────────────────────────────────────────────────────┐
+ * │ 1. TempControl_Process()                                            │
+ * │    ├── Read temperature sensors (Modbus integration)               │
+ * │    ├── Filter and validate sensor readings                         │
+ * │    ├── Run PID control algorithm                                   │
+ * │    ├── Apply ambient temperature compensation                       │
+ * │    └── Output required capacity percentage                          │
+ * └─────────────────────────────────────────────────────────────────────┘
+ * 
+ * STAGING CONTROL FLOW (ch_staging.c):
+ * ┌─────────────────────────────────────────────────────────────────────┐
+ * │ 1. Staging_Process()                                                │
+ * │    ├── Get required capacity from temperature control              │
+ * │    ├── Calculate required number of compressors                    │
+ * │    ├── Select which compressors to start/stop (runtime balance)    │
+ * │    ├── Control condenser banks based on active compressors         │
+ * │    ├── Execute GPIO relay commands                                  │
+ * │    └── Update equipment status and runtime hours                   │
+ * └─────────────────────────────────────────────────────────────────────┘
+ * 
+ * SAFETY SYSTEM FLOW (ch_safety.c):
+ * ┌─────────────────────────────────────────────────────────────────────┐
+ * │ 1. Safety_Process()                                                 │
+ * │    ├── Read safety input signals (GPIO inputs)                     │
+ * │    ├── Check temperature, pressure, flow limits                    │
+ * │    ├── Monitor equipment protection parameters                      │
+ * │    ├── Trigger alarms and protection actions                       │
+ * │    └── Execute emergency stops if required                         │
+ * └─────────────────────────────────────────────────────────────────────┘
+ * 
+ * ========================================================================
+ * FOUR-TIER CAPACITY CONTROL IMPLEMENTATION:
+ * ========================================================================
+ * 
+ * TIER 1 - ECONOMIC (25% Capacity):
+ * ├── Maximum 2 compressors active
+ * ├── 2 condenser banks active
+ * ├── Slower staging delays (energy focused)
+ * └── Higher temperature tolerance
+ * 
+ * TIER 2 - NORMAL (50% Capacity):
+ * ├── Maximum 4 compressors active
+ * ├── 3 condenser banks active
+ * ├── Standard staging delays
+ * └── Standard temperature control
+ * 
+ * TIER 3 - FULL (75% Capacity):
+ * ├── Maximum 6 compressors active
+ * ├── 4 condenser banks active
+ * ├── Faster staging delays
+ * └── Tighter temperature control
+ * 
+ * TIER 4 - CUSTOM (100% Capacity):
+ * ├── Maximum 8 compressors active
+ * ├── 4 condenser banks active
+ * ├── User-configurable parameters
+ * └── Full system capability
+ * 
+ * ========================================================================
+ * INTEGRATION POINTS WITH YOUR EXISTING CODE:
+ * ========================================================================
+ * 
+ * 1. EQUIPMENT_CONFIG INTEGRATION:
+ *    └── All 4 files integrate with your equipment_config.h system
+ *    └── Configuration loaded from flash at startup
+ *    └── Runtime hours tracked and saved to flash
+ * 
+ * 2. GPIO_MANAGER INTEGRATION:
+ *    └── ch_staging.c uses Relay_Set() for compressor/condenser control
+ *    └── ch_safety.c uses Input_Read() for safety interlock monitoring
+ * 
+ * 3. MODBUS_SENSOR INTEGRATION:
+ *    └── ch_temp_control.c reads temperature sensors via Modbus
+ *    └── Sensor fault detection and handling
+ * 
+ * 4. HMI INTEGRATION:
+ *    └── All systems update HMI VP registers
+ *    └── Status, alarms, and control data displayed on HMI
+ * 
+ * 5. FLASH STORAGE:
+ *    └── Configuration and runtime data saved to 25Q16 flash
+ *    └── Fault history and alarm logs stored
+ * 
+ * ========================================================================
+ * MAIN.C INTEGRATION EXAMPLE:
+ * ========================================================================
+ * 
+ * // In your main.c while(1) loop, add these calls:
+ * 
+ * void main(void) {
+ *     // ... existing initialization ...
+ *     
+ *     // Initialize chiller control system
+ *     ChillerControl_Core_Init();
+ *     TempControl_Init();
+ *     Staging_Init();
+ *     Safety_Init();
+ *     
+ *     while(1) {
+ *         // Existing periodic tasks
+ *         Equipment_Config_Process_Periodic_Tasks();
+ *         
+ *         // Add chiller control tasks
+ *         ChillerControl_Core_Process();      // Main control coordinator
+ *         Safety_Process();                   // Safety checks (high priority)
+ *         TempControl_Process();              // Temperature control
+ *         Staging_Process();                  // Equipment staging
+ *         
+ *         // Process debug commands
+ *         UART_Process_Commands();
+ *         
+ *         HAL_Delay(100);  // 100ms loop time
+ *     }
+ * }
+ * 
+ * ========================================================================
+ * NEW DEBUG COMMANDS AVAILABLE:
+ * ========================================================================
+ * 
+ * CORE CONTROL:
+ * ├── "core_status"     - System status and performance
+ * ├── "core_start"      - Start chiller system
+ * ├── "core_stop"       - Stop chiller system
+ * └── "core_emergency"  - Emergency stop
+ * 
+ * TEMPERATURE CONTROL:
+ * ├── "temp_status"     - Temperature control status
+ * ├── "temp_setpoint"   - Set return water setpoint
+ * ├── "temp_sensors"    - Show sensor readings
+ * └── "temp_pid"        - PID controller status
+ * 
+ * STAGING CONTROL:
+ * ├── "stage_status"    - Equipment staging status
+ * ├── "stage_manual"    - Manual equipment control
+ * ├── "stage_runtime"   - Equipment runtime hours
+ * └── "stage_balance"   - Runtime balancing status
+ * 
+ * SAFETY SYSTEM:
+ * ├── "safety_status"   - Safety system status
+ * ├── "safety_alarms"   - Active alarms
+ * ├── "safety_test"     - Test safety systems
+ * └── "safety_reset"    - Reset faults and alarms
+ * 
+ * ========================================================================
+ * NEXT STEPS:
+ * ========================================================================
+ * 
+ * 1. Choose which file to implement first (.c files)
+ * 2. Start with ch_control_core.c (main system)
+ * 3. Then ch_safety.c (safety first!)
+ * 4. Then ch_temp_control.c (temperature control)
+ * 5. Finally ch_staging.c (equipment control)
+ * 
+ * Each .c file will be approximately 500-800 lines of well-structured code
+ * with full integration to your existing systems.
+ */
