@@ -23,6 +23,7 @@
 #include "flash_25q16.h"
 #include "hmi.h"
 #include "sd_card.h"
+#include "equipment_config.h"
 
 /* Private define ------------------------------------------------------------*/
 #define RUN_LED_PORT        RUN_LED_GPIO_Port
@@ -120,7 +121,7 @@ int main(void)
   Send_Debug_Data("- input_monitor : Monitor inputs\r\n");
   Send_Debug_Data("- gpio_help : Show all commands\r\n");
 
-  // Initialize SPI for W5500
+   // Initialize SPI for W5500
   SPI_W5500_Init();
 
   // Test SPI
@@ -141,6 +142,14 @@ int main(void)
       Send_Debug_Data("W5500 SelfTest: FAILED!\r\n");
   }
 
+ /* === EQUIPMENT CONFIGURATION INITIALIZATION === */
+Send_Debug_Data("=== Initializing Equipment Configuration ===\r\n");
+if (EquipmentConfig_Init() == EQUIPMENT_STATUS_OK) {
+    Send_Debug_Data("Equipment Configuration: READY\r\n");
+} else {
+    Send_Debug_Data("Equipment Configuration: FAILED\r\n");
+}
+ 
   // === MODBUS SENSOR INITIALIZATION ===
   Modbus_System_Init();  // Initialize everything
   Modbus_System_SetInterval(60000);  // Set to 60 seconds instead of 10
@@ -254,7 +263,8 @@ int main(void)
         Modbus_System_Process();
         // HAL_Delay(1000);  // REMOVE THIS - it's blocking the main loop
     }
-
+/* --- Task 6: Equipment Configuration Processing --- */
+EquipmentConfig_ProcessPeriodicTasks();
     /* --- Task 3: GPIO Manager Processing --- */
     if (gpio_manager_initialized) {
         // Monitor input changes continuously
@@ -439,7 +449,39 @@ else if (strncmp(command, "modbus_60s", 10) == 0) {
         Send_Debug_Data("- sd_multiblock : Multi-block test\r\n");
     }
 }
-
+else if (strncmp(command, "config_show", 11) == 0) {
+    EquipmentConfig_DisplayStatus();
+}
+else if (strncmp(command, "config_defaults", 15) == 0) {
+    if (EquipmentConfig_LoadDefaults() == EQUIPMENT_STATUS_OK) {
+        Send_Debug_Data("38°C optimized defaults loaded\r\n");
+        EquipmentConfig_DisplayStatus();
+    } else {
+        Send_Debug_Data("Failed to load defaults\r\n");
+    }
+}
+else if (strncmp(command, "config_mode_eco", 15) == 0) {
+    if (EquipmentConfig_SetCapacityMode(CAPACITY_MODE_ECONOMIC) == EQUIPMENT_STATUS_OK) {
+        Send_Debug_Data("Switched to ECONOMIC mode (2 compressors max)\r\n");
+    }
+}
+else if (strncmp(command, "config_mode_normal", 18) == 0) {
+    if (EquipmentConfig_SetCapacityMode(CAPACITY_MODE_NORMAL) == EQUIPMENT_STATUS_OK) {
+        Send_Debug_Data("Switched to NORMAL mode (4 compressors max)\r\n");
+    }
+}
+else if (strncmp(command, "config_mode_full", 16) == 0) {
+    if (EquipmentConfig_SetCapacityMode(CAPACITY_MODE_FULL) == EQUIPMENT_STATUS_OK) {
+        Send_Debug_Data("Switched to FULL mode (6 compressors max)\r\n");
+    }
+}
+else if (strncmp(command, "config_save", 11) == 0) {
+    if (EquipmentConfig_SaveToFlash() == EQUIPMENT_STATUS_OK) {
+        Send_Debug_Data("Configuration saved to flash memory\r\n");
+    } else {
+        Send_Debug_Data("Flash save failed\r\n");
+    }
+}
 /**
  * @brief Display comprehensive system status
  */
@@ -600,3 +642,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   Send_Debug_Data(msg);
 }
 #endif /* USE_FULL_ASSERT */
+
